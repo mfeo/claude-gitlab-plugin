@@ -1,0 +1,10 @@
+{
+  "name": "gl",
+  "description": "Fetch GitLab issue / merge request data as LLM-friendly Markdown",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jerry Wu"
+  },
+  "homepage": "https://github.com/mfeo/claude-gitlab-plugin",
+  "license": "MIT"
+}

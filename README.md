@@ -1,6 +1,67 @@
-# GitLab read_api — Reading Issue / MR Data
+# claude-gitlab-plugin
 
-Bash scripts that fetch a GitLab issue or merge request and output structured Markdown suited for pasting into a chat LLM or an automated agent pipeline. Uses a **`read_api` scoped Personal Access Token** (read-only).
+A **Claude Code plugin** that fetches GitLab issues and merge requests as LLM-friendly Markdown, injecting the content directly into your Claude Code conversation context.
+
+> **Claude Code only.** This plugin uses Claude Code-specific features (dynamic shell injection, `${CLAUDE_PLUGIN_ROOT}`) that are not compatible with Codex CLI or Gemini CLI.
+
+## Install as Claude Code Plugin
+
+### Local / development
+
+```bash
+claude --plugin-dir /path/to/claude-gitlab-plugin
+```
+
+### Via marketplace (once published)
+
+```text
+/plugin marketplace add mfeo/claude-gitlab-plugin
+/plugin install gl@mfeo-claude-gitlab-plugin
+```
+
+## Usage in Claude Code
+
+```text
+/gl:issue mygroup/myproject 42
+/gl:mr mygroup/myproject 101
+/gl:mr mygroup/myproject 101 --diff
+/gl:mr mygroup/myproject 101 --diff --discussions
+```
+
+The fetched content is injected into the conversation. Claude can immediately summarise, analyse, or act on it.
+
+## Environment Setup
+
+Set `GITLAB_URL` and `GITLAB_TOKEN` in your shell or in `~/.claude/settings.json`:
+
+**`~/.zshrc` / `~/.bashrc`:**
+
+```bash
+export GITLAB_URL="https://gitlab.example.com/api/v4"
+export GITLAB_TOKEN="glpat-xxxxxxxxxxxxxxxxxxxx"
+```
+
+**`~/.claude/settings.json`:**
+
+```json
+{
+  "env": {
+    "GITLAB_URL": "https://gitlab.example.com/api/v4",
+    "GITLAB_TOKEN": "glpat-xxxxxxxxxxxxxxxxxxxx"
+  }
+}
+```
+
+`GITLAB_TOKEN` requires the `read_api` scope (read-only). See [Token Scope](#token-scope) below.
+
+## Direct CLI Usage
+
+The scripts in `scripts/` can also be run directly without Claude Code:
+
+```bash
+./scripts/fetch-issue.sh mygroup/myproject 42
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff --discussions | pbcopy
+```
 
 ## Token Scope
 
@@ -11,20 +72,6 @@ Bash scripts that fetch a GitLab issue or merge request and output structured Ma
 | `read_repository` | Read-only Git repository (clone/pull) | Not needed here |
 
 `read_api` is sufficient to call all endpoints in these scripts.
-
-## Authentication
-
-Add your token to every request via the `PRIVATE-TOKEN` header (recommended):
-
-```
-PRIVATE-TOKEN: <your_personal_access_token>
-```
-
-Alternatively, use the OAuth Bearer format:
-
-```
-Authorization: Bearer <your_personal_access_token>
-```
 
 ## API Endpoints
 
@@ -84,42 +131,40 @@ Scripts loop on `x-next-page` and stop when it is empty.
 - `curl`
 - `jq` — install with `brew install jq` (macOS) or `apt install jq` (Debian/Ubuntu)
 
-## Quick Start
+## Quick Start (Direct CLI)
 
 ```bash
-# 1. Copy and fill in env vars
-cp .env.example .env
-# edit .env: set GITLAB_URL and GITLAB_TOKEN
+# 1. Set env vars (see Environment Setup above)
 
 # 2. Make scripts executable
-chmod +x fetch-issue.sh fetch-mr.sh
+chmod +x scripts/fetch-issue.sh scripts/fetch-mr.sh
 
 # 3. Fetch an issue (Markdown output, ready for LLM)
-./fetch-issue.sh mygroup/myproject 42
+./scripts/fetch-issue.sh mygroup/myproject 42
 
 # 4a. Fetch a merge request (metadata + comments only)
-./fetch-mr.sh mygroup/myproject 101
+./scripts/fetch-mr.sh mygroup/myproject 101
 
 # 4b. Include the full code diff
-./fetch-mr.sh mygroup/myproject 101 --diff
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff
 
 # 4c. Discussion threads + diff (most complete, best for code review fix)
-./fetch-mr.sh mygroup/myproject 101 --diff --discussions
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff --discussions
 
 # 5. Pipe to clipboard and paste into chat
-./fetch-mr.sh mygroup/myproject 101 --diff --discussions | pbcopy
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff --discussions | pbcopy
 ```
 
 ### SaaS vs self-hosted
 
-The only difference is `GITLAB_URL` in your `.env`:
+The only difference is `GITLAB_URL`:
 
 ```bash
 # GitLab.com
-GITLAB_URL=https://gitlab.com/api/v4
+export GITLAB_URL=https://gitlab.com/api/v4
 
 # Self-hosted
-GITLAB_URL=https://gitlab.your-company.com/api/v4
+export GITLAB_URL=https://gitlab.your-company.com/api/v4
 ```
 
 ## Output format
@@ -139,22 +184,31 @@ System-generated notes (`assigned to X`, `added label Y`, etc.) are filtered out
 When `--diff` is used, diffs are truncated per file to avoid exceeding LLM context limits. Default is **500 lines per file**.
 
 ```bash
-MAX_DIFF_LINES_PER_FILE=200 ./fetch-mr.sh mygroup/myproject 101 --diff
+MAX_DIFF_LINES_PER_FILE=200 ./scripts/fetch-mr.sh mygroup/myproject 101 --diff
 ```
 
 Set to a larger value for models with larger context windows (e.g. `2000` for Claude).
 
 ## Example: feeding to Claude / ChatGPT
 
+**Via Claude Code plugin (recommended):**
+
+```text
+/gl:mr mygroup/myproject 101 --diff --discussions
+/gl:issue mygroup/myproject 42
+```
+
+**Via direct CLI:**
+
 ```bash
 # MR code review fix: include diff and discussions
-./fetch-mr.sh mygroup/myproject 101 --diff --discussions > mr.md
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff --discussions > mr.md
 
 # Issue implementation: no diff needed
-./fetch-issue.sh mygroup/myproject 42 > issue.md
+./scripts/fetch-issue.sh mygroup/myproject 42 > issue.md
 
 # macOS: copy directly to clipboard
-./fetch-mr.sh mygroup/myproject 101 --diff --discussions | pbcopy
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff --discussions | pbcopy
 ```
 
 ### System prompt — MR review fix
@@ -206,10 +260,19 @@ If the issue is ambiguous, list your assumptions before the plan.
 
 ```
 .
-├── .env.example        # Environment variable template
-├── .gitignore          # Excludes .env from version control
-├── fetch-issue.sh      # Output Markdown for an issue (metadata, description, comments, related MRs)
-├── fetch-mr.sh         # Output Markdown for a merge request (metadata, description, comments/discussions, optional diff with --diff)
-└── lib/
-    └── common.sh       # Shared helpers: env loading, curl wrapper, pagination, error handling
+├── .claude-plugin/
+│   └── plugin.json         # Claude Code plugin manifest (name: "gl")
+├── skills/
+│   ├── issue/
+│   │   └── SKILL.md        # /gl:issue — fetch GitLab issue
+│   └── mr/
+│       └── SKILL.md        # /gl:mr — fetch GitLab MR
+├── scripts/
+│   ├── fetch-issue.sh      # Markdown output for an issue
+│   └── fetch-mr.sh         # Markdown output for an MR (--diff, --discussions)
+├── lib/
+│   └── common.sh           # Shared helpers: curl wrapper, pagination, error handling
+├── .env.example            # Environment variable setup guide
+├── .gitignore
+└── README.md               # This file
 ```

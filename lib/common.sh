@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../.env"
-
 load_env() {
-  if [[ -f "$ENV_FILE" ]]; then
-    # shellcheck source=/dev/null
-    source "$ENV_FILE"
-  fi
   if [[ -z "${GITLAB_URL:-}" ]]; then
-    echo "Error: GITLAB_URL is not set. Copy .env.example to .env and fill in your values." >&2
+    echo "Error: GITLAB_URL is not set. Add it to your shell rc or ~/.claude/settings.json env block." >&2
     exit 1
   fi
   if [[ -z "${GITLAB_TOKEN:-}" ]]; then
-    echo "Error: GITLAB_TOKEN is not set. Copy .env.example to .env and fill in your values." >&2
+    echo "Error: GITLAB_TOKEN is not set. Add it to your shell rc or ~/.claude/settings.json env block." >&2
     exit 1
   fi
   GITLAB_URL="${GITLAB_URL%/}"
