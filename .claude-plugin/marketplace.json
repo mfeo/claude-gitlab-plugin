@@ -1,0 +1,13 @@
+{
+  "name": "mfeo-claude-gitlab-plugin",
+  "owner": {
+    "name": "Jerry Wu"
+  },
+  "plugins": [
+    {
+      "name": "gl",
+      "source": "./",
+      "description": "Fetch GitLab issue / merge request data as LLM-friendly Markdown"
+    }
+  ]
+}

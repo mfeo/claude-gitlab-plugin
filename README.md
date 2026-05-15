@@ -261,7 +261,8 @@ If the issue is ambiguous, list your assumptions before the plan.
 ```
 .
 ├── .claude-plugin/
-│   └── plugin.json         # Claude Code plugin manifest (name: "gl")
+│   ├── plugin.json         # Claude Code plugin manifest (name: "gl")
+│   └── marketplace.json    # Marketplace manifest for /plugin marketplace add
 ├── skills/
 │   ├── issue/
 │   │   └── SKILL.md        # /gl:issue — fetch GitLab issue
