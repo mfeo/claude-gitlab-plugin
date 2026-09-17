@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Usage: ./fetch-mr.sh <project_path> <mr_iid> [--diff] [--discussions]
+# Usage: ./fetch-mr.sh <project_path> <mr_iid> [--diff] [--discussions] [prompt...]
 # Example: ./fetch-mr.sh mygroup/myproject 101
 #          ./fetch-mr.sh mygroup/myproject 101 --diff
 #          ./fetch-mr.sh mygroup/myproject 101 --diff --discussions
+#          ./fetch-mr.sh mygroup/myproject 101 --diff summarise the risky changes
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
 if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <project_path> <mr_iid> [--diff] [--discussions]" >&2
+  echo "Usage: $0 <project_path> <mr_iid> [--diff] [--discussions] [prompt...]" >&2
   echo "Example: $0 mygroup/myproject 101" >&2
+  echo "Example: $0 mygroup/myproject 101 --diff summarise the risky changes" >&2
   exit 1
 fi
 
@@ -28,6 +30,8 @@ safe_title="$(md_escape_heading "$title")"
 
 echo "# Merge Request ${PROJECT_PATH}!${MR_IID}: ${safe_title}"
 echo ""
+
+emit_user_request
 
 echo "## Metadata"
 echo ""

@@ -92,15 +92,44 @@ parse_args() {
   USE_DISCUSSIONS="0"
   INCLUDE_DIFF="0"
   local positionals=()
+  local prompt_words=()
+  local in_prompt=0
+  local arg
   for arg in "$@"; do
+    # Once the free-form prompt has started, every remaining token is prompt
+    # text - including things that look like flags.
+    if [[ "$in_prompt" == "1" ]]; then
+      prompt_words+=("$arg")
+      continue
+    fi
     case "$arg" in
       --discussions) USE_DISCUSSIONS="1" ;;
       --diff)        INCLUDE_DIFF="1" ;;
-      *)             positionals+=("$arg") ;;
+      *)
+        if [[ "${#positionals[@]}" -lt 2 ]]; then
+          positionals+=("$arg")
+        else
+          in_prompt=1
+          prompt_words+=("$arg")
+        fi
+        ;;
     esac
   done
-  export USE_DISCUSSIONS INCLUDE_DIFF
   PARSED_POSITIONALS=("${positionals[@]+"${positionals[@]}"}")
+  PARSED_PROMPT="${prompt_words[*]+${prompt_words[*]}}"
+  export USE_DISCUSSIONS INCLUDE_DIFF PARSED_PROMPT
+}
+
+# Emit the user's free-form prompt as its own Markdown section so the model
+# reading the fetched document knows what it is being asked to do with it.
+emit_user_request() {
+  if [[ -z "${PARSED_PROMPT:-}" ]]; then
+    return 0
+  fi
+  echo "## User Request"
+  echo ""
+  echo "${PARSED_PROMPT}"
+  echo ""
 }
 
 md_escape_heading() {

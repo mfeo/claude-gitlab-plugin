@@ -30,6 +30,21 @@ claude --plugin-dir /path/to/claude-gitlab-plugin
 
 The fetched content is injected into the conversation. Claude can immediately summarise, analyse, or act on it.
 
+### Trailing prompt
+
+Anything after the positional arguments and the flags is treated as a free-form
+prompt telling Claude what to do with the fetched issue or MR:
+
+```text
+/gl:issue mygroup/myproject 42 draft an implementation plan and list the files to touch
+/gl:mr mygroup/myproject 101 --diff --discussions fix every unresolved thread
+```
+
+The prompt is echoed back as a `## User Request` section at the top of the
+generated Markdown, and Claude carries it out instead of falling back to the
+default summary. Flags are only recognised before the prompt starts, so a token
+such as `--diff` appearing inside the prompt text stays part of the prompt.
+
 ## Environment Setup
 
 Set `GITLAB_URL` and `GITLAB_TOKEN` in your shell or in `~/.claude/settings.json`:
@@ -61,6 +76,9 @@ The scripts in `scripts/` can also be run directly without Claude Code:
 ```bash
 ./scripts/fetch-issue.sh mygroup/myproject 42
 ./scripts/fetch-mr.sh mygroup/myproject 101 --diff --discussions | pbcopy
+
+# With a trailing prompt (rendered as a "## User Request" section)
+./scripts/fetch-mr.sh mygroup/myproject 101 --diff fix every unresolved thread
 ```
 
 ## Token Scope
@@ -131,6 +149,12 @@ Scripts loop on `x-next-page` and stop when it is empty.
 - `curl`
 - `jq` — install with `brew install jq` (macOS) or `apt install jq` (Debian/Ubuntu)
 
+## Tests
+
+```bash
+bash tests/parse-args.test.sh
+```
+
 ## Quick Start (Direct CLI)
 
 ```bash
@@ -176,6 +200,8 @@ Both scripts output Markdown with stable headings (`#`, `##`, `###`) designed fo
 - **MR output (`--diff`)**: adds `## Diff` between Description and Comments
 - **MR output (`--discussions`)**: `## Discussions` replaces `## Comments`; threads are grouped with `[resolved]`/`[unresolved]` labels and `Thread on file:line` headings
 - **MR output (`--diff --discussions`)**: all sections included
+
+When a trailing prompt is given, a `## User Request` section is emitted directly after the top-level heading, before `## Metadata`.
 
 System-generated notes (`assigned to X`, `added label Y`, etc.) are filtered out automatically.
 
@@ -272,7 +298,9 @@ If the issue is ambiguous, list your assumptions before the plan.
 │   ├── fetch-issue.sh      # Markdown output for an issue
 │   └── fetch-mr.sh         # Markdown output for an MR (--diff, --discussions)
 ├── lib/
-│   └── common.sh           # Shared helpers: curl wrapper, pagination, error handling
+│   └── common.sh           # Shared helpers: curl wrapper, pagination, arg parsing, error handling
+├── tests/
+│   └── parse-args.test.sh  # Tests for argument/prompt parsing (run: bash tests/parse-args.test.sh)
 ├── .env.example            # Environment variable setup guide
 ├── .gitignore
 └── README.md               # This file

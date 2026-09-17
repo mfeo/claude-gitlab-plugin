@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Usage: ./fetch-issue.sh <project_path> <issue_iid>
+# Usage: ./fetch-issue.sh <project_path> <issue_iid> [prompt...]
 # Example: ./fetch-issue.sh mygroup/myproject 42
+#          ./fetch-issue.sh mygroup/myproject 42 draft an implementation plan
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
 if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <project_path> <issue_iid>" >&2
+  echo "Usage: $0 <project_path> <issue_iid> [prompt...]" >&2
   echo "Example: $0 mygroup/myproject 42" >&2
+  echo "Example: $0 mygroup/myproject 42 draft an implementation plan" >&2
   exit 1
 fi
 
@@ -26,6 +28,8 @@ safe_title="$(md_escape_heading "$title")"
 
 echo "# Issue ${PROJECT_PATH}#${ISSUE_IID}: ${safe_title}"
 echo ""
+
+emit_user_request
 
 echo "## Metadata"
 echo ""
